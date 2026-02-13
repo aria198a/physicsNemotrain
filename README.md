@@ -1,145 +1,47 @@
-# PhysicsNeMo Symbolic
+# 🚀 PhysicsNeMo: 三鰭片散熱器設計空間優化 (PINNs)
 
-<!-- markdownlint-disable -->
+本專案利用 **NVIDIA PhysicsNeMo (Modulus)** 實現參數化散熱片的流熱耦合模擬。
+核心目標是在 **570 CFM** 風量限制下，優化 **113.28W** 熱源的散熱效能，並實現毫秒級的物理預測。
 
-[![Project Status: Active - The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-[![GitHub](https://img.shields.io/github/license/NVIDIA/physicsnemo)](https://github.com/NVIDIA/physicsnemo/blob/master/LICENSE.txt)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-<!-- markdownlint-enable -->
-[**PhysicsNeMo Sym**](#What-is-PhysicsNeMo-Symbolic)
-| [**Getting started**](#Getting-started)
-| [**Documentation**](https://docs.nvidia.com/deeplearning/physicsnemo/physicsnemo-core/index.html)
-| [**Contributing Guidelines**](#contributing-to-physicsnemo)
-| [**Communication**](#communication)
+## 📋 專案開發流程與組件
 
-## What is PhysicsNeMo Symbolic?
+根據 PINNs 開發流程，本專案分為以下四個核心階段：
 
-PhysicsNeMo Symbolic (PhysicsNeMo Sym) is sub-module of PhysicsNeMo framework that provides
-algorithms and utilities to explicitly physics inform the
-training of AI models. 
+| 檔案名稱 | 階段 | 技術亮點 |
+| :--- | :--- | :--- |
+| **`three_fin_geometry.py`** | **幾何層** | 定義參數化三鰭片，支援鰭片高度、長度、厚度的動態調整。 |
+| **`three_fin_flow.py`** | **流場訓練** | 求解 Navier-Stokes 方程，Loss 達到 **$10^{-8}$** 的極高精度。 |
+| **`three_fin_thermal.py`** | **熱傳訓練** | 注入 **113.28W** 熱源，Loss 達到 **$10^{-10}$**，精確模擬熱對流與傳導。 |
+| **`three_fin_design.py`** | **設計優化** | 自動在數百組幾何組合中搜尋「壓損最小」且「溫度最低」的最佳設計。 |
 
-Please refer to the [PhysicsNeMo framework](https://github.com/NVIDIA/physicsnemo/blob/main/README.md)
-to learn more about the full stack.
+---
 
-This includes utilities for explicitly integrating symbolic PDEs,
-domain sampling and computing PDE-based residuals using various gradient computing schemes.
+## 🔍 關鍵技術實作
 
-Please refer to the
-[Physics informing surrogate model for Darcy flow](https://docs.nvidia.com/deeplearning/physicsnemo/physicsnemo-core/examples/cfd/darcy_physics_informed/readme.html)
-that illustrates the concept.
+### 1. 即時推論 (Real-time Inference)
+不同於傳統 CFD 需要數小時計算，本專案訓練出的 `.pth` 模型可實現「像 YOLO 一樣快」的推論：
+* **單點預測**：使用 `usept.py` 可瞬間獲取特定座標溫度（例如原點預測值：**446.33 K**）。
+* **大規模場預測**：`inference_three_fin.py` 可生成 25 萬點的 `.csv` 數據供 ParaView 視覺化。
 
-It also provides an abstraction layer for developers that want to compose a training loop
-from specification
-of the geometry, PDEs and constraints like boundary conditions using simple symbolic APIs.
-Please refer to the
-[Lid Driven cavity](https://docs.nvidia.com/deeplearning/physicsnemo/physicsnemo-sym/user_guide/basics/lid_driven_cavity_flow.html)
-that illustrates the concept.
+### 2. 高精度權重管理
+模型權重存放於 `outputs/` 目錄，確保訓練過程可追蹤：
+* **流場權重**：`flow_network.0.pth`
+* **熱傳權重**：`thermal_s_network.0.pth` (固體) 與 `thermal_f_network.0.pth` (流體)
 
-Additional information can be found in the
-[PhysicsNeMo documentation](https://docs.nvidia.com/deeplearning/physicsnemo/physicsnemo-core/index.html).
+---
 
-<!-- markdownlint-enable -->
+## 🛠️ 快速啟動指南
 
-## Getting started
+### 環境修復
+腳本內建路徑鎖定邏輯，會自動連結 `physicsnemo-sym` 與核心庫。
 
-Please use the getting started guide here for [PhysicsNeMo](https://github.com/NVIDIA/physicsnemo/blob/main/README.md#getting-started)
+### 視覺化驗證
+1. **ParaView**：讀取 `flow_results.csv` 或 `thermal_results.csv`。
+2. **Table To Points**：將座標轉為 3D 點雲觀察溫度梯度與流線。
 
-Please refer [Introductory Example](https://github.com/NVIDIA/physicsnemo/tree/main/examples/cfd/darcy_physics_informed)
-for usage of the physics utils in custom training loops and
-[Lid Driven cavity](https://docs.nvidia.com/deeplearning/physicsnemo/physicsnemo-sym/user_guide/basics/lid_driven_cavity_flow.html)
-for an end-to-end PINN workflow.
+---
 
-## Installation
-
-Please ensure you have installed PhysicsNeMo using the steps [here](https://docs.nvidia.com/deeplearning/physicsnemo/physicsnemo-core/index.html).
-
-You can then install this package following the steps outlined below:
-
-### PyPi
-
-The recommended method for installing the latest version of PhysicsNeMo Symbolic is
-using PyPi:
-
-```bash
-pip install "Cython"
-pip install nvidia-physicsnemo.sym --no-build-isolation
-```
-
-Note, the above method only works for x86/amd64 based architectures. For installing
-PhysicsNeMo Sym on Arm based systems using pip,
-Install VTK from source as shown
-[here](https://gitlab.kitware.com/vtk/vtk/-/blob/v9.2.6/Documentation/dev/build.md?ref_type=tags#python-wheels)
-and then install PhysicsNeMo-Sym and other dependencies.
-
-```bash
-pip install nvidia-physicsnemo.sym --no-deps
-pip install "hydra-core>=1.2.0" "termcolor>=2.1.1" "chaospy>=4.3.7" "Cython==0.29.28" \
-    "numpy-stl==2.16.3" "opencv-python==4.5.5.64" "scikit-learn==1.0.2" \
-    "symengine>=0.10.0" "sympy==1.12" "timm>=1.0.3" "torch-optimizer==0.3.0" \
-    "transforms3d==0.3.1" "typing==3.7.4.3" "pillow==10.0.1" "notebook==6.4.12" \
-    "mistune==2.0.3" "pint==0.19.2" "tensorboard>=2.8.0"
-```
-
-### Container
-
-The recommended PhysicsNeMo docker image can be pulled from the
-[NVIDIA Container Registry](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/physicsnemo/containers/physicsnemo):
-
-```bash
-docker pull nvcr.io/nvidia/physicsnemo/physicsnemo:<tag>
-```
-
-### From Source
-
-### Package
-
-For a local build of the PhysicsNeMo Symbolic Python package from source use:
-
-```Bash
-git clone git@github.com:NVIDIA/physicsnemo-sym.git && cd physicsnemo-sym
-
-pip install --upgrade pip
-pip install .
-```
-
-### Source Container
-
-To build release image insert next tag and run below:
-
-```bash
-docker build -t physicsnemo-sym:deploy \
-    --build-arg TARGETPLATFORM=linux/amd64 --target deploy -f Dockerfile .
-```
-
-Currently only `linux/amd64` and `linux/arm64` platforms are supported.
-
-## Contributing to PhysicsNeMo
-
-PhysicsNeMo is an open source collaboration and its success is rooted in community
-contribution to further the field of Physics-ML. Thank you for contributing to the
-project so others can build on top of your contribution.
-
-For guidance on contributing to PhysicsNeMo, please refer to the
-[contributing guidelines](CONTRIBUTING.md).
-
-## Cite PhysicsNeMo
-
-If PhysicsNeMo helped your research and you would like to cite it, please refer to the
-[guidelines](https://github.com/NVIDIA/physicsnemo/blob/main/CITATION.cff)
-
-## Communication
-
-- Github Discussions: Discuss new architectures, implementations, Physics-ML research, etc.
-- GitHub Issues: Bug reports, feature requests, install issues, etc.
-- PhysicsNeMo Forum: The [PhysicsNeMo Forum](https://forums.developer.nvidia.com/t/welcome-to-the-physicsnemo-ml-model-framework-forum/178556)
-hosts an audience of new to moderate-level users and developers for general chat, online
-discussions, collaboration, etc.
-
-## Feedback
-
-Want to suggest some improvements to PhysicsNeMo? Use our [feedback form](https://docs.google.com/forms/d/e/1FAIpQLSfX4zZ0Lp7MMxzi3xqvzX4IQDdWbkNh5H_a_clzIhclE2oSBQ/viewform?usp=sf_link).
-
-## License
-
-PhysicsNeMo is provided under the Apache License 2.0, please see [LICENSE.txt](./LICENSE.txt)
-for full license text.
+## 📊 專案成果備忘
+- **輸入風量**: 570 CFM (5.0 m/s 基準)
+- **熱源功率**: 113.28 W (GradNormal 熱通量定義)
+- **優化目標**: 壓力降 < 2.5 Pa
