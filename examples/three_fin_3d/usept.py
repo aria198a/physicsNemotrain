@@ -22,7 +22,7 @@ output_keys = [Key("theta_s")]
 model = FullyConnectedArch(input_keys=input_keys, output_keys=output_keys)
 
 # 2. 載入權重檔
-ckpt_path = "outputs/three_fin_thermal/thermal_f_network.0.pth"
+ckpt_path = "outputs/three_fin_thermal/thermal_s_network.0.pth"
 if os.path.exists(ckpt_path):
     ckpt = torch.load(ckpt_path, map_location="cpu")
     model.load_state_dict(ckpt["model"] if "model" in ckpt else ckpt, strict=False)
